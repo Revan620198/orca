@@ -288,6 +288,13 @@ module.exports = {
   },
   mac: {
     icon: 'resources/build/icon.icns',
+    // Why: without this, LSMinimumSystemVersion is inherited from whatever
+    // Electron's own Info.plist carries, so the macOS floor moves silently on
+    // every Electron upgrade and nothing in the repo records or checks it.
+    // 12.0.0 (Monterey) is electron@43.1.0's documented floor. Raise this only
+    // as a deliberate decision, and update docs/reference/legacy-os-support.md
+    // in the same change — that doc is the support matrix of record.
+    minimumSystemVersion: '12.0.0',
     entitlements: 'resources/build/entitlements.mac.plist',
     entitlementsInherit: 'resources/build/entitlements.mac.plist',
     extendInfo: {

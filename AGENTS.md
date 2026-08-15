@@ -30,7 +30,7 @@ Orca targets macOS, Linux, and Windows. Keep all platform-dependent behavior beh
 - **Shortcut labels in UI**: Display `⌘` / `⇧` on Mac and `Ctrl+` / `Shift+` on other platforms.
 - **File paths**: Use `path.join` or Electron/Node path utilities — never assume `/` or `\`.
 - **Linux native modules**: keep the glibc floor at Ubuntu 20.04 / glibc 2.31. A module compiled from source on a newer runner can reference symbol versions absent on the floor and crash the app on startup. See [`docs/reference/linux-glibc-compatibility.md`](./docs/reference/linux-glibc-compatibility.md); packaging fails if a bundled native binary needs newer glibc.
-- **OS support floor**: macOS and Windows have no declared or enforced minimum — the floor is inherited from Electron, so an Electron upgrade can drop an OS silently. See [`docs/reference/legacy-os-support.md`](./docs/reference/legacy-os-support.md) before bumping Electron.
+- **OS support floor**: macOS 12.0, Windows 10, Ubuntu 20.04 — x64/arm64 only, no 32-bit builds. [`docs/reference/legacy-os-support.md`](./docs/reference/legacy-os-support.md) is the support matrix of record; a floor may only move as a deliberate change recorded there in the same commit. Nothing yet checks the macOS floor against Electron's, so re-read that doc when bumping Electron.
 
 ## SSH Use Case
 
