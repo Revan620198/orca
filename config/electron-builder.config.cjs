@@ -281,10 +281,12 @@ module.exports = {
     shortcutName: '${productName}',
     uninstallDisplayName: '${productName}',
     createDesktopShortcut: 'always',
-    // Why: on a real uninstall, stop and remove the relocated terminal daemon
-    // (which lives outside the install dir under LOCALAPPDATA by design). Guarded
-    // by ${isUpdated} inside so it never runs during an update's uninstallOldVersion.
-    include: resolve(__dirname, 'nsis', 'daemon-host-uninstall.nsh')
+    // Why: `include` takes a single path, so installer-hooks.nsh is the entry
+    // point and pulls in the per-concern scripts beside it — currently the
+    // Windows 10 floor check (customInit) and the relocated-daemon cleanup on a
+    // real uninstall (customUnInstall, guarded by ${isUpdated} so it never runs
+    // during an update's uninstallOldVersion).
+    include: resolve(__dirname, 'nsis', 'installer-hooks.nsh')
   },
   mac: {
     icon: 'resources/build/icon.icns',

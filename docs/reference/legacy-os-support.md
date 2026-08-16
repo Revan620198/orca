@@ -82,7 +82,7 @@ the other two platforms should reach.
 | Platform | Floor declared | Written policy | Drift caught in CI | On the user's machine                       |
 | -------- | -------------- | -------------- | ------------------ | ------------------------------------------- |
 | macOS    | Yes            | Yes            | Yes                | Blocked — `LSMinimumSystemVersion`          |
-| Windows  | Doc only       | Yes            | Yes                | **Warned only** — no installer guard        |
+| Windows  | Yes            | Yes            | Yes                | Blocked — NSIS `customInit`                 |
 | Linux    | Yes            | Yes            | Yes                | Blocked — packaging gate                    |
 
 [`config/scripts/verify-os-support-floor.mjs`](../../config/scripts/verify-os-support-floor.mjs)
@@ -124,13 +124,50 @@ Linux is not checked at runtime: its floor is glibc, which the kernel release
 string says nothing about, and a too-old glibc fails at native-module load before
 this code runs.
 
-Remaining work, in order of value:
+## The Windows installer check
 
-- **An NSIS version check** so the Windows floor is enforced at install time
-  rather than only warned about after launch. This is the last **Warned only**
-  cell in the table above.
-- **An Electron-upgrade checklist** capturing floor, arch matrix, and 32-bit
-  status as things to re-verify on every major bump.
+[`config/nsis/installer-hooks.nsh`](../../config/nsis/installer-hooks.nsh)
+defines a `customInit` macro that aborts installation below Windows 10, using
+`${AtLeastWin10}` from NSIS's `WinVer.nsh`. That macro is version-number based
+and Windows 11 reports NT 10.0, so it admits 10, 11, and anything newer, and
+rejects only 8.1 and older.
+
+It blocks where the runtime check only warns, and the difference is deliberate:
+refusing to *install* on an unsupported OS is the normal installer contract and
+strands nobody, whereas refusing to *start* would strand an existing install.
+
+> **Not yet verified on Windows.** This was written without access to a Windows
+> machine or an NSIS toolchain, so it has never been compiled or run. A missing
+> `WinVer.nsh` or a bad `!include` path surfaces as a build failure in the
+> Windows release job rather than as a broken installer, but the runtime
+> behaviour of the version comparison has not been observed. Smoke-test an
+> installer build before relying on it.
+
+## Upgrading Electron
+
+The floor is downstream of Electron, so a major bump is the moment it moves.
+`verify:os-support-floor` fails on an unrecorded major and will tell you this;
+the checklist is what to do about it.
+
+1. **Read the new floor from primary source.** The "Platform support" section of
+   `https://raw.githubusercontent.com/electron/electron/v<VERSION>/README.md` at
+   the exact tag — not a search result, and not the `latest` docs, which describe
+   whatever version is current rather than the one being pinned.
+2. **Record it** in `ELECTRON_PLATFORM_FLOORS` in
+   [`config/scripts/verify-os-support-floor.mjs`](../../config/scripts/verify-os-support-floor.mjs).
+3. **If the floor rose**, update in the same commit: the table at the top of this
+   page, `minimumSystemVersion` in the builder config, `${AtLeastWin10}` (or its
+   successor) in the NSIS hook, the constants in
+   [`src/main/startup/os-support-floor.ts`](../../src/main/startup/os-support-floor.ts),
+   and the summary line in `AGENTS.md`. Re-run `pnpm verify:os-support-floor`.
+4. **Re-check the architecture matrix.** A major can drop an architecture as well
+   as an OS version. Orca ships x64 and arm64 only; confirm both still have
+   prebuilt binaries.
+5. **Note it in the release notes** if a floor rose. Raising a floor drops users,
+   and they should find out before the update rather than when it fails to launch.
+6. **Confirm Orca's own constraints** have not become the stricter side. The
+   floor is the tighter of Electron's and Orca's native dependencies — on Linux
+   node-pty is already the binding constraint, not Electron.
 
 ## Audit notes
 
