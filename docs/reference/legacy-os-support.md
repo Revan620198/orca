@@ -79,11 +79,11 @@ the other two platforms should reach.
 
 ## Status of enforcement
 
-| Platform | Floor declared | Written policy | Drift caught in CI | Enforced on the user's machine |
-| -------- | -------------- | -------------- | ------------------ | ------------------------------ |
-| macOS    | Yes            | Yes            | Yes                | Yes — `LSMinimumSystemVersion` |
-| Windows  | Doc only       | Yes            | Yes                | **No** — no installer guard    |
-| Linux    | Yes            | Yes            | Yes                | Yes — packaging gate           |
+| Platform | Floor declared | Written policy | Drift caught in CI | On the user's machine                       |
+| -------- | -------------- | -------------- | ------------------ | ------------------------------------------- |
+| macOS    | Yes            | Yes            | Yes                | Blocked — `LSMinimumSystemVersion`          |
+| Windows  | Doc only       | Yes            | Yes                | **Warned only** — no installer guard        |
+| Linux    | Yes            | Yes            | Yes                | Blocked — packaging gate                    |
 
 [`config/scripts/verify-os-support-floor.mjs`](../../config/scripts/verify-os-support-floor.mjs)
 runs in PR CI and fails when any of these drift apart:
@@ -102,14 +102,33 @@ Bumping Electron therefore fails CI until a human reads the new version's
 platform-support section and records it — which is the point: the floor becomes
 a decision instead of a side effect.
 
+## The runtime warning
+
+[`src/main/startup/os-support-floor.ts`](../../src/main/startup/os-support-floor.ts)
+checks the running OS at `app.whenReady()` and, below the floor, logs and shows a
+dialog naming the requirement and what was detected. Two deliberate choices:
+
+**It warns and continues rather than blocking.** An unsupported OS is not
+necessarily a broken one, and silently refusing to start would be a worse
+experience than the confusing failures it replaces. Escalating to a hard block is
+a one-line change at the call site in `src/main/index.ts` — a product decision,
+not a technical one.
+
+**It fails open.** An unparseable release string reports supported. A false
+positive nags a user whose OS is fine, which is worse than staying quiet about an
+OS we cannot identify.
+
+Windows 11 reports NT `10.0`, the same major as Windows 10 — it is distinguished
+by build number — so the Windows floor is `NT major >= 10` and accepts both.
+Linux is not checked at runtime: its floor is glibc, which the kernel release
+string says nothing about, and a too-old glibc fails at native-module load before
+this code runs.
+
 Remaining work, in order of value:
 
-- **A runtime guard** that names the requirement instead of failing opaquely.
-  [`src/main/window/macos-tahoe-release.ts`](../../src/main/window/macos-tahoe-release.ts)
-  already establishes the OS-version-branching pattern — it just points upward at
-  the newest macOS rather than downward at the floor.
-- **An NSIS version check** so the Windows floor is enforced on the user's
-  machine rather than only stated here and checked in CI.
+- **An NSIS version check** so the Windows floor is enforced at install time
+  rather than only warned about after launch. This is the last **Warned only**
+  cell in the table above.
 - **An Electron-upgrade checklist** capturing floor, arch matrix, and 32-bit
   status as things to re-verify on every major bump.
 
