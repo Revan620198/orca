@@ -79,27 +79,37 @@ the other two platforms should reach.
 
 ## Status of enforcement
 
-| Platform | Floor declared | Written policy | Enforced automatically |
-| -------- | -------------- | -------------- | ---------------------- |
-| macOS    | Yes            | Yes            | **No**                 |
-| Windows  | Doc only       | Yes            | **No**                 |
-| Linux    | Yes            | Yes            | Yes — packaging gate   |
+| Platform | Floor declared | Written policy | Drift caught in CI | Enforced on the user's machine |
+| -------- | -------------- | -------------- | ------------------ | ------------------------------ |
+| macOS    | Yes            | Yes            | Yes                | Yes — `LSMinimumSystemVersion` |
+| Windows  | Doc only       | Yes            | Yes                | **No** — no installer guard    |
+| Linux    | Yes            | Yes            | Yes                | Yes — packaging gate           |
 
-Declaring the floors closes the "nobody knows what we support" problem. It does
-**not** yet close the "it can move without anyone noticing" problem: nothing
-compares the declared macOS floor against what Electron actually requires, so an
-Electron bump can still make this document quietly wrong.
+[`config/scripts/verify-os-support-floor.mjs`](../../config/scripts/verify-os-support-floor.mjs)
+runs in PR CI and fails when any of these drift apart:
+
+1. Electron is bumped to a major with no recorded platform floor — the upgrade
+   must record the new floor rather than inherit it silently
+2. `minimumSystemVersion` is missing from the mac block
+3. The declared macOS floor is below what Electron requires
+4. The config and the table at the top of this page disagree
+5. The Windows floor is below what Electron requires
+6. The Linux row drifts from `linux-glibc-compatibility.md`, which is the doc
+   that actually enforces it
+
+The Electron floors live in a deliberately **manual** table inside that script.
+Bumping Electron therefore fails CI until a human reads the new version's
+platform-support section and records it — which is the point: the floor becomes
+a decision instead of a side effect.
 
 Remaining work, in order of value:
 
-- **A CI check** in the idiom of `verify-linux-glibc-floor.cjs`: read the
-  declared floor, read what Electron requires, fail when they disagree. This
-  turns an Electron bump from a silent floor change into a forced decision.
 - **A runtime guard** that names the requirement instead of failing opaquely.
   [`src/main/window/macos-tahoe-release.ts`](../../src/main/window/macos-tahoe-release.ts)
   already establishes the OS-version-branching pattern — it just points upward at
   the newest macOS rather than downward at the floor.
-- **An NSIS version check** so the Windows floor is enforced rather than stated.
+- **An NSIS version check** so the Windows floor is enforced on the user's
+  machine rather than only stated here and checked in CI.
 - **An Electron-upgrade checklist** capturing floor, arch matrix, and 32-bit
   status as things to re-verify on every major bump.
 
