@@ -281,13 +281,22 @@ module.exports = {
     shortcutName: '${productName}',
     uninstallDisplayName: '${productName}',
     createDesktopShortcut: 'always',
-    // Why: on a real uninstall, stop and remove the relocated terminal daemon
-    // (which lives outside the install dir under LOCALAPPDATA by design). Guarded
-    // by ${isUpdated} inside so it never runs during an update's uninstallOldVersion.
-    include: resolve(__dirname, 'nsis', 'daemon-host-uninstall.nsh')
+    // Why: `include` takes a single path, so installer-hooks.nsh is the entry
+    // point and pulls in the per-concern scripts beside it — currently the
+    // Windows 10 floor check (customInit) and the relocated-daemon cleanup on a
+    // real uninstall (customUnInstall, guarded by ${isUpdated} so it never runs
+    // during an update's uninstallOldVersion).
+    include: resolve(__dirname, 'nsis', 'installer-hooks.nsh')
   },
   mac: {
     icon: 'resources/build/icon.icns',
+    // Why: without this, LSMinimumSystemVersion is inherited from whatever
+    // Electron's own Info.plist carries, so the macOS floor moves silently on
+    // every Electron upgrade and nothing in the repo records or checks it.
+    // 12.0.0 (Monterey) is electron@43.1.0's documented floor. Raise this only
+    // as a deliberate decision, and update docs/reference/legacy-os-support.md
+    // in the same change — that doc is the support matrix of record.
+    minimumSystemVersion: '12.0.0',
     entitlements: 'resources/build/entitlements.mac.plist',
     entitlementsInherit: 'resources/build/entitlements.mac.plist',
     extendInfo: {

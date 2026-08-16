@@ -143,6 +143,7 @@ import {
 } from './startup/dev-education-suppression'
 import { maybeRedirectAppImageCliLaunch } from './startup/appimage-cli-redirect'
 import { maybeRedirectPackagedCliEntryLaunch } from './startup/packaged-cli-entry-redirect'
+import { checkOsSupportFloor, osSupportFloorWarning } from './startup/os-support-floor'
 import { startFirstWindowStartupServices } from './startup/first-window-startup-services'
 import { recoverLegacyWorkerTerminalsForRendererStartup } from './startup/legacy-worker-renderer-recovery'
 import { createWslCliReconciliationStartupBarrier } from './startup/wsl-cli-reconciliation-startup-barrier'
@@ -1935,6 +1936,23 @@ function shouldSuppressCodexAutoApprovalSyntheticTitleFromHook(args: {
 
 void app.whenReady().then(async () => {
   logStartupMilestone('app-ready')
+  // Why: Windows has no installer-level floor (electron-builder has no
+  // minimumSystemVersion for Windows), so below Windows 10 the app otherwise
+  // fails in confusing ways with nothing naming the requirement. Warns and
+  // continues rather than blocking — an unsupported OS is not necessarily a
+  // broken one, and the detection fails open. See
+  // docs/reference/legacy-os-support.md.
+  const osSupportWarning = osSupportFloorWarning(checkOsSupportFloor())
+  if (osSupportWarning) {
+    console.warn('[os-support-floor]', osSupportWarning.replace(/\n+/g, ' '))
+    dialog.showMessageBoxSync({
+      type: 'warning',
+      title: 'Unsupported operating system',
+      message: 'Orca is running on an unsupported operating system.',
+      detail: osSupportWarning,
+      buttons: ['Continue']
+    })
+  }
   installMainThreadHangWatchdog({ userDataPath: getCanonicalUserDataPath() })
   const hangDetection = consumeHangDetectionMarker(
     hangDetectionMarkerPath(getCanonicalUserDataPath())
