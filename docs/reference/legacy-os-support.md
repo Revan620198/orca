@@ -136,12 +136,29 @@ It blocks where the runtime check only warns, and the difference is deliberate:
 refusing to *install* on an unsupported OS is the normal installer contract and
 strands nobody, whereas refusing to *start* would strand an existing install.
 
-> **Not yet verified on Windows.** This was written without access to a Windows
-> machine or an NSIS toolchain, so it has never been compiled or run. A missing
-> `WinVer.nsh` or a bad `!include` path surfaces as a build failure in the
-> Windows release job rather than as a broken installer, but the runtime
-> behaviour of the version comparison has not been observed. Smoke-test an
-> installer build before relying on it.
+### What has been verified
+
+Compiled with `makensis` 3.09 on Linux, driven the way electron-builder consumes
+`nsis.include` — `!include` the hook file, then `!insertmacro` both hooks:
+
+- `installer-hooks.nsh` compiles cleanly and produces an installer binary
+- `!include WinVer.nsh` resolves, and `${AtLeastWin10}` is defined
+- `${__FILEDIR__}\daemon-host-uninstall.nsh` resolves, so the nested include works
+- `${IfNot} ${AtLeastWin10}` compiles inside a section
+- `AtLeastWin10` is a **real runtime test**, not compiled away. `WinVer.nsh`
+  redefines some checks to `LogicLib_AlwaysTrue` under `__WinVer_Optimize`, but
+  only up to `AtLeastWin2000` — Win10 is never in that set, so the gate cannot
+  silently become a no-op
+- `WINVER_10_NT` is `0x8A000000` (10.0.10240, Windows 10 RTM). Windows 11 is
+  10.0.22000+, so it compares greater and passes — the data-level confirmation
+  that this admits Windows 11
+
+> **Still unverified: execution on real Windows.** Wine could not be installed
+> in the environment this was written in, so the comparison has been proven to
+> compile and shown to be a live test, but has never actually run against a real
+> `GetVersionEx`. electron-builder also bundles its own NSIS rather than using
+> the system one; the version tested here is 3.09. Run one real installer before
+> a release that depends on this.
 
 ## Upgrading Electron
 
