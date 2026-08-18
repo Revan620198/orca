@@ -71,10 +71,43 @@ installation below Windows 10, and it is recorded in the table above.
 
 ### Linux
 
-Already enforced. `config/scripts/verify-linux-glibc-floor.cjs` runs in the
+Enforced. `config/scripts/verify-linux-glibc-floor.cjs` runs in the
 electron-builder `afterPack` hook and **fails the build** if any bundled native
-binary needs a newer glibc/libstdc++ than the floor provides. This is the model
-the other two platforms should reach.
+binary needs a newer glibc/libstdc++ than the floor provides.
+
+The release build is also pinned to `ubuntu-22.04` rather than `ubuntu-latest`.
+That does not test the floor — it stops the build host's glibc rising whenever
+GitHub bumps the image, which is the mechanism that shipped #9902. The label is
+asserted in `config/scripts/package-electron-runtime-contract.test.mjs`, so
+moving it is a deliberate change. It still needs a bump before the image is
+retired; that assertion is where it will surface.
+
+## Bundled binaries
+
+Two packaging gates check that what ships can actually load at the floor:
+
+| Platform | Gate | Checks |
+| -------- | ---- | ------ |
+| Linux | `verify-linux-glibc-floor.cjs` | ELF version needs vs glibc 2.31 / `GLIBCXX_3.4.28` |
+| macOS | `verify-macos-minos-floor.cjs` | Mach-O `LC_BUILD_VERSION` `minos` vs macOS 12.0 |
+
+Both run from `afterPack` and fail packaging on a violation. The macOS gate
+exempts `sherpa-onnx` from failing for the same reason the Linux one does — it is
+a third-party speech prebuilt built against a newer toolchain, and it loads
+lazily in the speech worker rather than at launch, so a violation degrades speech
+instead of crashing startup. It is reported as a warning rather than ignored.
+
+Windows has no equivalent: its binaries are checked by neither gate, and PE files
+carry no comparable minimum-OS field. The NSIS installer check is the Windows
+floor enforcement.
+
+> **The macOS gate has never run on a real macOS packaging host.** Its parsing is
+> unit-tested against real `vtool -show-build` and `otool -l` output, and the walk,
+> exemption, and failure paths were exercised end to end against a synthetic
+> Mach-O tree with a stubbed `vtool` — but no actual Apple binary has been
+> inspected. The first macOS release build after this lands is the real test. If
+> it fails on a pre-existing violation, that is the gate working; record the
+> finding before loosening it.
 
 ## Status of enforcement
 

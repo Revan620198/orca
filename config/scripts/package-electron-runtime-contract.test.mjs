@@ -245,6 +245,22 @@ describe('Electron runtime package contract', () => {
     expect(windowsReleaseEntry.os).toBe('windows-2022')
   })
 
+  it('pins the Linux release builder to a fixed runner image', () => {
+    // Why: the declared Linux floor is Ubuntu 20.04 / glibc 2.31. ubuntu-latest's
+    // glibc rises with the image, which is how #9902 shipped a build that could
+    // not start on the floor. This asserts the label stays pinned so a bump is a
+    // deliberate change rather than a silent one.
+    const releaseWorkflow = parse(
+      readFileSync(join(projectDir, '.github/workflows/release-cut.yml'), 'utf8')
+    )
+    const linuxReleaseEntry = releaseWorkflow.jobs.build.strategy.matrix.include.find(
+      ({ platform }) => platform === 'linux-x64'
+    )
+
+    expect(linuxReleaseEntry.os).toBe('ubuntu-22.04')
+    expect(linuxReleaseEntry.os).not.toBe('ubuntu-latest')
+  })
+
   it('keeps release-cut signing provenance on GitHub-hosted runners', () => {
     const releaseWorkflow = parse(
       readFileSync(join(projectDir, '.github/workflows/release-cut.yml'), 'utf8')

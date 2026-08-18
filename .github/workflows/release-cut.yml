@@ -979,7 +979,13 @@ jobs:
             eb_cache_path: |
               ~\AppData\Local\electron\Cache
               ~\AppData\Local\electron-builder\Cache
-          - os: ubuntu-latest
+          # Why: the declared Linux floor is Ubuntu 20.04 / glibc 2.31, but
+          # ubuntu-latest's glibc rises whenever GitHub bumps the image — the
+          # exact mechanism that shipped #9902. Pinning does not test the floor;
+          # it stops the build host moving without anyone noticing, and narrows
+          # the gap. package-electron-runtime-contract.test.mjs asserts this
+          # label, so a bump before image retirement surfaces there.
+          - os: ubuntu-22.04
             platform: linux-x64
             release_command: node config/scripts/ensure-native-runtime.mjs --runtime=electron && pnpm exec electron-builder --config config/electron-builder.config.cjs --linux AppImage deb rpm --x64 --publish always
             eb_cache_path: |
