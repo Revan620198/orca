@@ -77,6 +77,18 @@ const { readAuthorizationStatusMock } = vi.hoisted(() => ({
   )
 }))
 
+// Why: the macOS Settings deep link now branches on the Darwin version, so these
+// tests must control it — the real os.release() is the CI host's Linux kernel.
+let fakeDarwinRelease = '22.1.0'
+vi.mock('node:os', async () => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- vi.importActual requires inline import()
+  const actual = await vi.importActual<typeof import('node:os')>('node:os')
+  return {
+    ...actual,
+    release: () => fakeDarwinRelease
+  }
+})
+
 vi.mock('./notification-authorization-status', () => ({
   readNotificationAuthorizationStatus: readAuthorizationStatusMock
 }))
@@ -222,11 +234,21 @@ describe('registerNotificationHandlers', () => {
         })
       } as never)
 
+      fakeDarwinRelease = '22.1.0'
       const handler = getOpenSystemSettingsHandler()
       handler({})
 
       expect(shellOpenExternalMock).toHaveBeenCalledWith(
         'x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=com.stablyai.orca.dev.fb5a47066f08'
+      )
+
+      // Monterey is the declared floor and does not have the Ventura pane id.
+      shellOpenExternalMock.mockClear()
+      fakeDarwinRelease = '21.6.0'
+      handler({})
+
+      expect(shellOpenExternalMock).toHaveBeenCalledWith(
+        'x-apple.systempreferences:com.apple.preference.notifications?id=com.stablyai.orca.dev.fb5a47066f08'
       )
     } finally {
       Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })

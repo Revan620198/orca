@@ -28,6 +28,7 @@ import { readNotificationAuthorizationStatus } from './notification-authorizatio
 import { parsePaneKey } from '../../shared/stable-pane-id'
 import { setTrayAttention } from '../tray/system-tray'
 import { isMainWindowVisible } from '../window/main-window-visibility'
+import { macosNotificationSettingsUrl } from '../macos-settings-urls'
 
 const NOTIFICATION_COOLDOWN_MS = 5000
 const MAX_RECENT_NOTIFICATION_KEYS = 50
@@ -35,8 +36,6 @@ const NOTIFICATION_DISPLAY_CONFIRMATION_TIMEOUT_MS = 2500
 const NOTIFICATION_RELEASE_FALLBACK_MS = 5 * 60 * 1000
 const MAX_NOTIFICATION_SOUND_BYTES = 10 * 1024 * 1024
 const MACOS_PACKAGED_BUNDLE_ID = 'com.stablyai.orca'
-const MACOS_NOTIFICATION_SETTINGS_URL =
-  'x-apple.systempreferences:com.apple.Notifications-Settings.extension'
 const NOTIFICATION_SOUND_MIME_BY_EXTENSION: ReadonlyMap<string, string> = new Map([
   ['.ogg', 'audio/ogg'],
   ['.mp3', 'audio/mpeg'],
@@ -188,7 +187,9 @@ function probeNotificationDelivery(): Promise<NotificationDeliveryProbeResult> {
 
 function getMacNotificationSettingsUrl(): string {
   const bundleId = process.env.ORCA_DEV_MACOS_BUNDLE_ID ?? MACOS_PACKAGED_BUNDLE_ID
-  return `${MACOS_NOTIFICATION_SETTINGS_URL}?id=${encodeURIComponent(bundleId)}`
+  // Why: the Ventura-era pane id does not resolve on Monterey, the declared
+  // floor, so the helper picks the identifier per macOS version.
+  return macosNotificationSettingsUrl(bundleId)
 }
 
 function openNotificationSystemSettings(): void {

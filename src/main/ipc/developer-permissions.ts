@@ -4,6 +4,7 @@ import { access } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { ipcMain, shell, systemPreferences } from 'electron'
+import { macosPrivacySettingsUrl } from '../macos-settings-urls'
 import type {
   DeveloperPermissionId,
   DeveloperPermissionRequestResult,
@@ -76,9 +77,9 @@ function getAccessibilityStatus(): DeveloperPermissionStatus {
 async function openPrivacyPane(id: DeveloperPermissionId): Promise<boolean> {
   const url = PRIVACY_PANE_URLS[id]
   if (!url) {
-    await shell.openExternal(
-      'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension'
-    )
+    // Why: the Ventura-era pane id does not resolve on Monterey, the declared
+    // floor, so the helper picks the identifier per macOS version.
+    await shell.openExternal(macosPrivacySettingsUrl())
     return true
   }
   await shell.openExternal(url)
