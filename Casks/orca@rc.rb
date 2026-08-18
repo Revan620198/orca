@@ -31,7 +31,11 @@ cask "orca@rc" do
   # waiting for Homebrew metadata churn between frequent release candidates.
   auto_updates true
   conflicts_with cask: "orca"
-  depends_on macos: :big_sur
+  # Why: must track minimumSystemVersion in config/electron-builder.config.cjs.
+  # Homebrew gates the INSTALL; LSMinimumSystemVersion gates the LAUNCH. If this
+  # is lower, brew installs an app macOS then refuses to open.
+  # docs/reference/legacy-os-support.md is the matrix of record.
+  depends_on macos: :monterey
 
   app "Orca.app"
 

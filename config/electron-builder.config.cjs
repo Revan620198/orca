@@ -12,6 +12,7 @@ const {
   verifyPackagedMainRuntimeDeps
 } = require('./packaged-runtime-node-modules.cjs')
 const { verifyLinuxGlibcFloor } = require('./scripts/verify-linux-glibc-floor.cjs')
+const { verifyMacosMinosFloor } = require('./scripts/verify-macos-minos-floor.cjs')
 const { writeMacBuildCompatibility } = require('./scripts/mac-build-compatibility.cjs')
 const { verifyPackagedPluginResources } = require('./scripts/verify-packaged-plugin-resources.cjs')
 
@@ -172,6 +173,12 @@ module.exports = {
     // Fail packaging if any bundled native binary exceeds the supported floor.
     if (context.electronPlatformName === 'linux') {
       verifyLinuxGlibcFloor(context.appOutDir)
+    }
+    // Why: the macOS twin of the gate above. Release builds run on a macos-15
+    // runner with no pinned deployment target, so the same silent runner bump
+    // that caused #9902 on Linux had nothing checking it on macOS.
+    if (context.electronPlatformName === 'darwin') {
+      verifyMacosMinosFloor(context.appOutDir)
     }
     const resourcesDir =
       context.electronPlatformName === 'darwin'

@@ -8,6 +8,7 @@ import { SearchableSetting } from './SearchableSetting'
 import { clampNumber } from '@/lib/terminal-theme'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { translate } from '@/i18n/i18n'
+import { isWindowBlurSupported } from '@/lib/window-blur-support'
 
 type TerminalWindowSectionProps = {
   settings: GlobalSettings
@@ -28,6 +29,15 @@ export function TerminalWindowSection({
   // show a "Restart required" banner only when they differ.
   const blurAtMountRef = useRef<boolean>(settings.windowBackgroundBlur ?? false)
   const blurPendingRestart = (settings.windowBackgroundBlur ?? false) !== blurAtMountRef.current
+  // Why: blur is `backgroundMaterial: 'acrylic'`, which only exists on Windows 11
+  // 22H2+. Below that — including every supported Windows 10, macOS and Linux
+  // build — the toggle asked for a restart and then changed nothing. Hide it
+  // where it provably cannot work; the check fails open when undetectable.
+  const platformInfo = typeof window === 'undefined' ? undefined : window.api?.platform?.get?.()
+  const windowBlurSupported = isWindowBlurSupported({
+    platform: platformInfo?.platform,
+    osRelease: platformInfo?.osRelease
+  })
   const [relaunchingBlur, setRelaunchingBlur] = useState(false)
   const mountedRef = useMountedRef()
 
@@ -92,6 +102,7 @@ export function TerminalWindowSection({
           />
         </SearchableSetting>
 
+        {windowBlurSupported ? (
         <SearchableSetting
           title={translate(
             'auto.components.settings.TerminalWindowSection.2b82242f43',
@@ -176,6 +187,7 @@ export function TerminalWindowSection({
             </div>
           ) : null}
         </SearchableSetting>
+        ) : null}
 
         <SearchableSetting
           title={translate(
