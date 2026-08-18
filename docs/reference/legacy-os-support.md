@@ -64,11 +64,10 @@ dependency version, with nothing in the repo recording or checking it.
 ### Windows
 
 electron-builder has no `minimumSystemVersion` equivalent for Windows, so the
-Windows floor is currently declared **here only** — it is documentation, not an
-installer guard. A user on Windows 8.1 can still run the installer; what happens
-next is undefined. Adding an NSIS version check to
-[`config/nsis/`](../../config/nsis) would make this enforceable, and is tracked
-as remaining work below.
+Windows floor is not declared in the builder config. It is enforced instead by
+the NSIS `customInit` hook described under
+[The Windows installer check](#the-windows-installer-check), which aborts
+installation below Windows 10, and it is recorded in the table above.
 
 ### Linux
 
@@ -199,8 +198,16 @@ re-investigated:
   key is unmodified"), which are correct on every platform.
 - **Git legacy handling is sound**, with a stated 2.25 baseline and host-scoped
   capability caching. See [`git-compatibility.md`](./git-compatibility.md).
-- **`os.release()` is telemetry only.** All eight call sites are crash reporting
-  and diagnostics; none gates behavior on OS version.
+- **`os.release()` is telemetry only, but it is not the only version API.** All
+  eight `os.release()` call sites are crash reporting and diagnostics. The live
+  OS-version gate uses a different name: `process.getSystemVersion()` is exposed
+  through [`src/preload/index.ts`](../../src/preload/index.ts) as `osRelease` and
+  drives the ConPTY branch in
+  [`windows-pty-compatibility.ts`](../../src/renderer/src/lib/pane-manager/windows-pty-compatibility.ts)
+  (`buildNumber < 21376`). Both arms stay reachable under the current floor —
+  Windows 10 tops out at build 19045 and Windows 11 starts at 22000 — so the gate
+  is correct, not dead. Search both API names when auditing version gates; the
+  original audit searched only `os.release()` and wrongly concluded none existed.
 
 The Electron platform-support figures above were read from the
 `electron/electron` README at the pinned `v43.1.0` tag, not from a search
